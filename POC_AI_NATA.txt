@@ -1,0 +1,83 @@
+### **Project Overview**
+
+Develop a Python-based Proof of Concept (PoC) application that leverages AI to perform specific business actions through a conversational interface. The application will use **Streamlit** for the UI and integrate with **OpenAI APIs**, **Langchain**, and **MongoDB**. It will also support **multi-language voice input**.
+
+---
+
+### **Tech Stack**
+
+1. **Python** – Core language for backend logic and AI integration
+2. **Streamlit** – Frontend framework to build an interactive web app
+3. **OpenAI API** – Used for both chat completion and multi-language voice-to-text capabilities
+4. **Langchain** – To orchestrate AI agents and manage the interaction logic
+5. **MongoDB** – For storing chat history and user interactions
+6. **OpenAI Whisper API** – To capture and transcribe voice input from users in multiple languages
+7. Create requirements.txt file for the dependencies.
+
+---
+
+### **Key AI Agent Actions**
+
+The AI agent should support and respond to the following user-driven actions:
+
+1. Retrieve the **number of invoices** for a given sales date
+2. Fetch **invoice details** for a specific sales date in a structured format
+3. **Reconcile** the ES system for a vendor based on a sales date
+4. List **upcoming overdue sales orders**
+5. List **upcoming overdue invoices**
+
+---
+
+### **UI Requirements**
+
+Build a chat interface using Streamlit with the following components:
+
+#### **Layout**
+
+* **Left Panel**:
+
+  * Chat history (scrollable) showing user prompts and AI responses
+  * Option to delete specific chats or clear entire history
+
+* **Right Panel**:
+
+  * Current chat conversation
+  * Suggested actions (initial default view)
+  * Voice and text-based input interface
+
+#### **Chat Input Section**
+
+* Located at the bottom of the right panel
+* Includes a **text area** and **send button**
+* Voice input support using OpenAI's Whisper (supports multiple languages)
+* Input should convert to structured action + parameters before execution
+
+#### **Additional Features**
+
+* Chat history is **persisted in MongoDB**
+* Support for **deleting or clearing chat history**
+* Support for **multi-language voice input** for initiating actions
+* Visual separation (horizontal line) between chat input and responses
+* Chat messages aligned accordingly (user vs AI)
+
+---
+
+### **User Workflow**
+
+1. On load, the chat interface displays a list of supported AI actions
+2. User selects an action or inputs a custom message via text or voice
+3. If voice input is used, the message is transcribed and shown in the chat input field with detected action and parameters
+4. User confirms or sends the request
+5. AI agent processes the request and returns the result
+6. Response is displayed in the chat interface
+7. All chat interactions are stored in MongoDB
+8. Users can review, delete, or clear past interactions
+
+---
+
+### **Key Differentiators**
+
+* Multi-language voice input for natural interaction
+* Context-aware action execution via Langchain and OpenAI
+* Clean and intuitive Streamlit interface with history tracking
+* Real-time interaction flow mimicking conversational apps

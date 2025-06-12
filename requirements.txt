@@ -1,0 +1,9 @@
+# requirements.txt
+streamlit
+openai
+langchain
+langchain-openai
+pymongo
+python-dotenv
+requests
+streamlit-mic-recorder
