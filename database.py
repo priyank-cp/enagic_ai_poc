@@ -16,9 +16,8 @@ class MemoryManager:
     Chat history is not persisted and will be lost when the session ends.
     """
     def __init__(self):
-        # Initialize the in-memory DB if it doesn't exist.
         if "in_memory_db" not in st.session_state:
-            st.session_state.in_memory_db = {} # {chat_id: {"messages": [...], "timestamp": ...}}
+            st.session_state.in_memory_db = {} 
 
     def _ensure_db_exists(self):
         """A private helper to ensure robustness in every method."""
@@ -32,10 +31,23 @@ class MemoryManager:
             key=lambda item: item[1]['timestamp'],
             reverse=True
         )
-        return [{
-            "chat_id": chat_id,
-            "title": next((msg['content'] for msg in data.get('messages', []) if msg['role'] == 'user'), "New Chat")
-        } for chat_id, data in sorted_chats]
+        
+        # --- NEW ROBUST LOGIC ---
+        summaries = []
+        for chat_id, data in sorted_chats:
+            title = "New Chat"  # Default title
+            # Explicitly loop through messages to find the first user message
+            for msg in data.get('messages', []):
+                # Add robust checks for type and key existence
+                if isinstance(msg, dict) and msg.get('role') == 'user':
+                    title = msg.get('content', 'Chat')
+                    break  # Found the first one, stop looking
+            summaries.append({
+                "chat_id": chat_id,
+                "title": title
+            })
+        return summaries
+        # --- END OF NEW LOGIC ---
 
     def get_chat_messages(self, chat_id: str):
         self._ensure_db_exists()
@@ -56,7 +68,7 @@ class MemoryManager:
             if chat_id in st.session_state.in_memory_db:
                 st.session_state.in_memory_db[chat_id]["messages"].append(message_doc)
                 st.session_state.in_memory_db[chat_id]["timestamp"] = datetime.utcnow()
-            else: # If chat_id somehow got lost, recreate it
+            else: 
                 st.session_state.in_memory_db[chat_id] = {
                     "messages": [message_doc],
                     "timestamp": datetime.utcnow()
@@ -69,13 +81,11 @@ class MemoryManager:
             del st.session_state.in_memory_db[chat_id]
 
     def clear_all_history(self):
-        # This is the correct way to clear the in-memory history
         st.session_state.in_memory_db = {}
 
 
 # --- MongoDB Storage Manager ---
 class MongoManager:
-    # ... (No changes needed for MongoManager)
     def __init__(self):
         mongo_uri = os.getenv("MONGO_URI")
         if not mongo_uri:
@@ -92,10 +102,23 @@ class MongoManager:
                 {"_id": 1, "messages.content": 1, "timestamp": 1}
             ).sort("timestamp", pymongo.DESCENDING)
             
-            return [{
-                "chat_id": str(chat["_id"]),
-                "title": next((msg['content'] for msg in chat.get('messages', []) if msg['role'] == 'user'), "New Chat")
-            } for chat in chats]
+            # --- NEW ROBUST LOGIC ---
+            summaries = []
+            for chat in chats:
+                title = "New Chat"  # Default title
+                # Explicitly loop through messages to find the first user message
+                for msg in chat.get('messages', []):
+                    # Add robust checks for type and key existence
+                    if isinstance(msg, dict) and msg.get('role') == 'user':
+                        title = msg.get('content', 'Chat')
+                        break  # Found the first one, stop looking
+                summaries.append({
+                    "chat_id": str(chat["_id"]),
+                    "title": title
+                })
+            return summaries
+            # --- END OF NEW LOGIC ---
+
         except OperationFailure as e:
             st.error(f"Database error while fetching summaries: {e}")
             return []

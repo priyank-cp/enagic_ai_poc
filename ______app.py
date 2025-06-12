@@ -16,7 +16,7 @@ from openai import OpenAI
 st.set_page_config(page_title="AI Business Agent", layout="wide", page_icon="🤖")
 inject_custom_css()
 
-# --- Dynamic Resource Initialization ---
+# --- Resource Management ---
 @st.cache_resource
 def init_resources():
     openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -48,11 +48,21 @@ if "prompt_input" not in st.session_state:
 
 # --- Helper and Callback Functions ---
 def add_message(role, content):
-    st.session_state.messages.append({"role": role, "content": content})
-    if st.session_state.get("chat_id"):
-        st.session_state.chat_id = db_manager.save_message(st.session_state.chat_id, role, content)
+    """
+    Adds a message to the chat history, converting DataFrames to a savable format.
+    """
+    # --- THIS IS THE NEW LOGIC ---
+    # If content is a DataFrame, convert it to a list of dicts before storing
+    if isinstance(content, pd.DataFrame):
+        savable_content = content.to_dict('records')
     else:
-        st.session_state.chat_id = db_manager.save_message(None, role, content)
+        savable_content = content
+    # --- END OF NEW LOGIC ---
+
+    st.session_state.messages.append({"role": role, "content": savable_content})
+    
+    chat_id = st.session_state.get("chat_id")
+    st.session_state.chat_id = db_manager.save_message(chat_id, role, savable_content)
 
 def handle_user_input(prompt):
     add_message("user", prompt)
@@ -69,6 +79,7 @@ def process_text_input():
     prompt = st.session_state.prompt_input.strip()
     if prompt:
         handle_user_input(prompt)
+        st.session_state.prompt_input = ""
 
 # --- LOGIN UI FUNCTION ---
 def show_login_ui():
@@ -96,11 +107,10 @@ def show_main_chat_ui():
         st.title("Business Agent")
         st.markdown("---")
         if st.button("➕ New Chat", use_container_width=True):
-            # Clear relevant chat state, but preserve authentication and db manager
-            st.session_state.messages = []
-            st.session_state.pending_action = None
-            if 'chat_id' in st.session_state:
-                del st.session_state['chat_id']
+            auth_state = st.session_state.authenticated
+            for key in st.session_state.keys():
+                del st.session_state[key]
+            st.session_state.authenticated = auth_state
             st.rerun()
 
         st.markdown("#### Chat History")
@@ -123,30 +133,50 @@ def show_main_chat_ui():
                 st.rerun()
 
         st.markdown("---")
-        # --- THIS IS THE CORRECTED SECTION ---
         if st.button("Clear All History", type="primary", use_container_width=True):
-            # Delegate clearing to the database manager
             db_manager.clear_all_history()
-            # Reset the current chat UI state
             st.session_state.messages = []
             st.session_state.pending_action = None
             if 'chat_id' in st.session_state:
                 del st.session_state['chat_id']
             st.rerun()
-        # --- END OF CORRECTION ---
 
     # Main Chat Panel
     st.header("Conversational Interface")
     display_predefined_actions()
     st.markdown("---")
 
+    # --- THIS SECTION IS UPDATED TO HANDLE THE SAVED DATA FORMAT ---
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             content = msg["content"]
+            # All structured data is now stored as a list of dicts.
             if isinstance(content, list):
-                st.dataframe(pd.DataFrame(content), use_container_width=True)
+                # Convert the list back to a DataFrame for display
+                df = pd.DataFrame(content)
+                # Check if the DataFrame contains our specific Error column
+                if "Error" in df.columns:
+                    st.error(df["Error"].iloc[0])
+                elif df.empty:
+                    st.write("No records found for your query.")
+                else:
+                    # Display the report preview and download button
+                    st.write("Here is a preview of the report:")
+                    st.dataframe(df.head(10))
+                    
+                    @st.cache_data
+                    def convert_df_to_csv(d):
+                        return d.to_csv(index=False).encode('utf-8')
+
+                    csv_data = convert_df_to_csv(df)
+                    st.download_button(
+                        label="📥 Download Full Report",
+                        data=csv_data,
+                        file_name="report.csv",
+                        mime="text/csv",
+                    )
             else:
-                st.markdown(content)
+                st.markdown(str(content))
 
     if st.session_state.pending_action:
         col1, col2, col3 = st.columns([1, 1, 4])
@@ -161,7 +191,7 @@ def show_main_chat_ui():
             st.session_state.pending_action = None
             add_message("assistant", "Action cancelled.")
             st.rerun()
-
+            
     # Custom Sticky User Input
     input_container = st.container()
     with input_container:

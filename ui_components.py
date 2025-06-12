@@ -2,80 +2,104 @@
 
 import streamlit as st
 
-def inject_custom_css():
-    """
-    Injects custom CSS to style the app and create a custom sticky input bar.
-    """
-    st.markdown("""
-        <style>
-            /* Main chat container */
-            .st-emotion-cache-1jicfl2 {
-                flex-direction: column-reverse;
-                overflow-y: auto;
-            }
-
-            /* Add padding to the bottom of the main app to prevent overlap with the sticky bar */
-            .main .block-container {
-                padding-bottom: 8rem; 
-            }
-
-            /* --- Custom Sticky Input Bar --- */
-            /* This is the container for our text input and mic button */
-            .st-emotion-cache-1fplaw9 {
-                position: fixed;
-                bottom: 0;
-                width: 100%;
-                background-color: white;
-                border-top: 1px solid #e0e0e0;
-                padding: 10px 1rem 20px 1rem;
-                z-index: 999;
-            }
-
-            /* Chat messages styling (remains the same) */
-            .st-emotion-cache-1c7y2kd {
-                width: 100%;
-                display: flex;
-            }
-            .stChatMessage {
-                max-width: 85%;
-                padding: 0.75rem 1rem;
-                border-radius: 1rem;
-                margin-bottom: 0.5rem;
-                line-height: 1.6;
-            }
-
-            /* AI (Assistant) message */
-            [data-testid="stChatMessage"]:has([data-testid="stStreamlitUIAvatar-assistant"]) {
-                background-color: #f0f2f6;
-                color: #333;
-                align-self: flex-start;
-            }
-
-            /* User message */
-            [data-testid="stChatMessage"]:has([data-testid="stStreamlitUIAvatar-user"]) {
-                background-color: #0b93f6;
-                color: white;
-                align-self: flex-end;
-            }
-            
-            /* Align user message to the right */
-            .st-emotion-cache-1c7y2kd:has([data-testid="stStreamlitUIAvatar-user"]) {
-                justify-content: flex-end;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+def display_welcome_message():
+    """Displays a professional welcome message in the chat container."""
+    st.info("Welcome! I'm your Commission Co-Pilot. You can ask me to perform a task by typing, using your voice, or selecting an action from the dashboard above. How can I assist you today?")
 
 def display_predefined_actions():
     """
-    Displays the list of predefined actions in a collapsible expander.
+    Displays the full actions dashboard. All actions are for display and initiated via chat.
     """
-    with st.expander("✨ View Available Actions", expanded=True):
-        st.markdown("""
-        You can ask the agent to perform the following actions using text or voice.
+    with st.expander("✨ View Available Actions Dashboard", expanded=True):
         
-        * **Get Invoice Count:** *"How many invoices did we have for 2025-06-15?"*
-        * **Fetch Invoice Details:** *"Show me the invoice details for today."*
-        * **Reconcile System:** *"Reconcile the ES system for vendor 'Global Imports' for yesterday."*
-        * **List Overdue Orders:** *"List upcoming overdue sales orders."*
-        * **List Overdue Invoices:** *"Are there any invoices about to be overdue?"*
-        """)
+        # Helper function to render all action boxes consistently
+        def action_box(title, caption, is_working=False):
+            if is_working:
+                classname = "working-feature"
+                caption_text = caption
+            else:
+                classname = "coming-soon-feature"
+                caption_text = "(Coming Soon)"
+
+            st.markdown(f"""
+            <div class="action-box {classname}">
+                <p class="action-title">{title}</p>
+                <p class="action-caption">{caption_text if is_working else caption}</p>
+                <p class="action-status">{"" if is_working else "(Coming Soon)"}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # --- Daily Operations Section ---
+        st.subheader("🛠️ Daily Operations", anchor=False)
+        daily_actions = [
+            ("Recover SAP Commission", "For cancelled orders", False),
+            ("Reconcile SAP vs ES Sales", "For a specific date", True),
+            ("Check Recovery Status", "For today's cancellations", False),
+            ("Process Sales Payment", "For a specific date", False),
+            ("Issue Payment", "Transfer or print check", False),
+            ("Update ES Payment Result", "From a results file", False),
+            ("Recover Canceled Orders", "From the ES system", False)
+        ]
+        
+        cols = st.columns(4)
+        for i, (title, caption, is_working) in enumerate(daily_actions):
+            with cols[i % 4]:
+                action_box(title, caption, is_working)
+
+        # --- Month-End Operations Section ---
+        st.subheader("📅 Month-End Operations", anchor=False)
+        monthly_actions = [
+            ("Post Intercompany Debits", "Send debit notes", False),
+            ("Accrue & Reverse Commissions", "Handle IC commission", False),
+            ("Reconcile IC Payments", "Match payment instructions", False),
+            ("Send Balance Confirmations", "To IC partners", False)
+        ]
+        cols = st.columns(4)
+        for i, (title, caption, is_working) in enumerate(monthly_actions):
+            with cols[i % 4]:
+                action_box(title, caption, is_working)
+        
+        # --- Reports Section ---
+        st.subheader("📊 Reports", anchor=False)
+        report_actions = [
+            ("General Commission Report", "View overall commissions", True),
+            ("Top Vendor Payments", "Ranked for last month", False),
+            ("6A Bonus Forecast", "Expected bonus accrual", False)
+        ]
+        cols = st.columns(4)
+        for i, (title, caption, is_working) in enumerate(report_actions):
+            with cols[i % 4]:
+                action_box(title, caption, is_working)
+
+
+def inject_custom_css():
+    """Injects all necessary CSS for the layout."""
+    st.markdown("""
+        <style>
+            /* Layout Adjustments */
+            .main .block-container {
+                padding-top: 2rem;
+                padding-bottom: 10rem;
+            }
+            .sticky-input-bar {
+                position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
+                background: white; padding: 1rem 1rem 1.5rem 1rem;
+                border-top: 1px solid #e0e0e0; z-index: 9999;
+            }
+
+            /* Chat Message Styling */
+            .stChatMessage { max-width: 85%; border-radius: 1rem; }
+
+            /* Action Box Styling */
+            .action-box {
+                padding: 0.75rem; border-radius: 0.5rem; text-align: center;
+                margin-bottom: 1rem; min-height: 100px; display: flex;
+                flex-direction: column; justify-content: center; align-items: center;
+            }
+            .action-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 0.25rem; line-height: 1.2; }
+            .action-caption { font-size: 0.8rem; margin: 0; line-height: 1.1; color: #555; }
+            .action-status { font-size: 0.75rem; font-style: italic; color: #888; margin-top: 0.25rem;}
+            .working-feature { background-color: #e8f5e9; border: 1px solid #a5d6a7; }
+            .coming-soon-feature { background-color: #fafafa; border: 1px solid #eeeeee; }
+        </style>
+    """, unsafe_allow_html=True)
