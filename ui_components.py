@@ -32,13 +32,15 @@ def display_predefined_actions():
         # --- Daily Operations Section ---
         st.subheader("🛠️ Daily Operations", anchor=False)
         daily_actions = [
-            ("Recover SAP Commission", "For cancelled orders", False),
-            ("Reconcile SAP vs ES Sales", "For a specific date", True),
-            ("Check Recovery Status", "For today's cancellations", False),
-            ("Process Sales Payment", "For a specific date", False),
-            ("Issue Payment", "Transfer or print check", False),
-            ("Update ES Payment Result", "From a results file", False),
-            ("Recover Canceled Orders", "From the ES system", False)
+            ("1. Execute all steps 1-7 for the SAP ES Matched Data", "", False),
+            ("2. Recover SAP Commission For cancelled orders", "", False),
+            ("3. Reconcile SAP vs ES Commission For a specific date", "", True),
+            ("4. Check Commission Recovery Status For today's payments", "", False),
+            ("5. Execute SAP payment for a specific sale date", "", False),
+            ("6. Create a bank transfer file or print cheque", "", False),
+            ("7. Update SAP payment at ES", "", False),
+            ("8. Download the summary of commission payments for a sales date", "", False),
+            ("9. E8PA Members Fast commission payment", "", False)
         ]
         
         cols = st.columns(4)
@@ -52,7 +54,10 @@ def display_predefined_actions():
             ("Post Intercompany Debits", "Send debit notes", False),
             ("Accrue & Reverse Commissions", "Handle IC commission", False),
             ("Reconcile IC Payments", "Match payment instructions", False),
-            ("Send Balance Confirmations", "To IC partners", False)
+            ("Send Balance Confirmations", "To IC partners", False),
+            ("TDS Report", "", False),
+            ("Send Commision GST Invoices", "", False),
+            ("Scan the gst_commission_ind@enagic.com email post GST commission invoices and make GST payment to the distributor", "", False)
         ]
         cols = st.columns(4)
         for i, (title, caption, is_working) in enumerate(monthly_actions):
@@ -69,6 +74,16 @@ def display_predefined_actions():
         cols = st.columns(4)
         for i, (title, caption, is_working) in enumerate(report_actions):
             with cols[i % 4]:
+                action_box(title, caption, is_working)
+
+         # --- Year-End Operationsn ---
+        st.subheader("📆 Year-End Operations", anchor=False)
+        yearly_actions = [
+            ("1099 report and list of distributor who had a name or SSN change", "", False)
+        ]
+        cols = st.columns(4)
+        for i, (title, caption, is_working) in enumerate(yearly_actions):
+            with cols[i % 2]:
                 action_box(title, caption, is_working)
 
 

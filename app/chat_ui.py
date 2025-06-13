@@ -104,7 +104,7 @@ def _render_user_input(openai_client):
                 st.text_input("Your message...", key="prompt_input", on_change=process_text_input,
                               disabled=input_disabled, label_visibility="collapsed")
             with col2:
-                audio_bytes = mic_recorder(start_prompt="🎤", stop_prompt="⏹️", 
+                audio_bytes = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", 
                                            key='mic', just_once=True, use_container_width=True)
         
         if audio_bytes:
