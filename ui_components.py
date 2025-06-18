@@ -1,6 +1,10 @@
 # ui_components.py
 
 import streamlit as st
+import base64
+from pathlib import Path
+import pandas as pd
+import random
 
 def display_welcome_message():
     """Displays a professional welcome message in the chat container."""
@@ -32,15 +36,15 @@ def display_predefined_actions():
         # --- Daily Operations Section ---
         st.subheader("🛠️ Daily Operations", anchor=False)
         daily_actions = [
-            ("1. Execute all steps 1-7 for the SAP ES Matched Data", "", False),
-            ("2. Recover SAP Commission For cancelled orders", "", False),
-            ("3. Reconcile SAP vs ES Commission For a specific date", "", True),
-            ("4. Check Commission Recovery Status For today's payments", "", False),
-            ("5. Execute SAP payment for a specific sale date", "", False),
-            ("6. Create a bank transfer file or print cheque", "", False),
-            ("7. Update SAP payment at ES", "", False),
-            ("8. Download the summary of commission payments for a sales date", "", False),
-            ("9. E8PA Members Fast commission payment", "", False)
+            ("0. Execute all steps 1-7 for the SAP ES Matched Data", "", False),
+            ("1. Recover SAP Commission For cancelled orders", "", False),
+            ("2. Reconcile SAP vs ES Commission For a specific date", "", True),
+            ("3. Check Commission Recovery Status For today's payments", "", False),
+            ("4. Execute SAP payment for a specific sale date", "", False),
+            ("5. Create a bank transfer file or print cheque", "", False),
+            ("6. Update SAP payment at ES", "", False),
+            ("7. Download the summary of commission payments for a sales date", "", False),
+            ("8. E8PA Members Fast commission payment", "", False)
         ]
         
         cols = st.columns(4)
@@ -86,7 +90,6 @@ def display_predefined_actions():
             with cols[i % 2]:
                 action_box(title, caption, is_working)
 
-
 def inject_custom_css():
     """Injects all necessary CSS for the layout."""
     st.markdown("""
@@ -116,5 +119,82 @@ def inject_custom_css():
             .action-status { font-size: 0.75rem; font-style: italic; color: #888; margin-top: 0.25rem;}
             .working-feature { background-color: #e8f5e9; border: 1px solid #a5d6a7; }
             .coming-soon-feature { background-color: #fafafa; border: 1px solid #eeeeee; }
+
+            /* Microphone Button Styling */
+            .stMicRecorder button {
+                background: none !important;
+                border: none !important;
+                padding: 10px !important;
+                border-radius: 50% !important;
+                transition: all 0.3s ease !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 24px !important;
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
+            }
+            .stMicRecorder button:hover {
+                background-color: #f0f0f0 !important;
+            }
+            .stMicRecorder button.recording {
+                background-color: #ff4444 !important;
+                animation: pulse 1.5s infinite !important;
+            }
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+                100% { transform: scale(1); }
+            }
         </style>
     """, unsafe_allow_html=True)
+
+def display_reconciliation_results(result: dict, idx=None):
+    """Display reconciliation results in the chat UI"""
+    if result["status"] == "error":
+        st.error(result["message"])
+        return
+
+    details = result["details"]
+    st.info(f"Reconciliation completed for period {details['start_date']} to {details['end_date']}")
+    print(f"idx: {idx}")
+    # Display unmatched amounts
+    if details["unmatched_amounts"]:
+        st.write("#### Unmatched Amounts")
+        df_unmatched = pd.DataFrame(details["unmatched_amounts"])
+        st.dataframe(df_unmatched)
+        # Download button for complete list
+        csv = pd.DataFrame(details["unmatched_amounts"]).to_csv(index=False)
+        st.download_button(
+            label="Download Complete List",
+            data=csv,
+            file_name="unmatched_amounts.csv",
+            mime="text/csv",
+            key=f"unmatched_download_btn_{idx}" if idx is not None else "unmatched_download_btn"
+        )
+    # Display payment block removal
+    if details["payment_block_removal"]:
+        st.write("#### You can remove the payment block for the following records from SAP")
+        df_payment_block = pd.DataFrame(details["payment_block_removal"])
+        st.dataframe(df_payment_block)
+        # Confirmation button if there are records
+        if len(details["payment_block_removal"]) > 0:
+            btn_key = f"remove_payment_block_btn_{idx}" if idx is not None else "remove_payment_block_btn"
+            if st.button(
+                f"Remove Payment Block for {len(details['payment_block_removal'])} records",
+                key=btn_key,
+            ):
+                print("Removing payment block...====>")
+                from agent_logic import execute_action
+                result = execute_action({
+                    "action": "remove_payment_block",
+                    "args": {"records": details["payment_block_removal"]}
+                })
+                st.success(result.get("result", {}).get("message", "Payment block removed from SAP"))
+
+# Tool-to-UI mapping for dynamic invocation
+TOOL_UI_RENDERERS = {
+    "reconcile_sap_vs_es_sales": display_reconciliation_results,
+}

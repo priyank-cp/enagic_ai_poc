@@ -4,13 +4,13 @@ import streamlit as st
 import pandas as pd
 from streamlit_mic_recorder import mic_recorder
 from agent_logic import execute_action
-from ui_components import display_predefined_actions, display_welcome_message
+from ui_components import display_predefined_actions, display_welcome_message, display_reconciliation_results, TOOL_UI_RENDERERS
 from app.state import add_message, process_text_input, handle_user_input
 
 def _render_sidebar(db_manager):
     """Renders the sidebar with chat history, controls, and DB status."""
     with st.sidebar:
-        st.title("Commission Co-Pilot")
+        st.title("KangenX Commission Co-Pilot")
         st.markdown("---")
         if st.button("➕ New Chat", use_container_width=True):
             auth_state = st.session_state.authenticated
@@ -56,11 +56,13 @@ def _render_sidebar(db_manager):
                 st.warning(status_info["message"], icon="⚠️")
 
 def _render_chat_messages():
-    """Renders the chat messages and action confirmation buttons."""
-    for msg in st.session_state.messages:
+    for idx, msg in enumerate(st.session_state.messages):
         with st.chat_message(msg["role"]):
             content = msg["content"]
-            if isinstance(content, list):
+            # If this is a tool result dict, use render_tool_result and pass idx
+            if isinstance(content, dict) and "tool" in content and "result" in content:
+                render_tool_result(content, idx=idx)
+            elif isinstance(content, list):
                 df = pd.DataFrame(content)
                 if "Error" in df.columns:
                     st.error(df["Error"].iloc[0])
@@ -76,7 +78,8 @@ def _render_chat_messages():
                     st.download_button("📥 Download Full Report", csv_data, "report.csv", "text/csv")
             else:
                 st.markdown(str(content))
-
+    
+    # Always check for pending action first
     if st.session_state.pending_action:
         col1, col2, col3 = st.columns([1, 1, 4])
         if col1.button("✅ Yes, proceed", use_container_width=True):
@@ -90,13 +93,15 @@ def _render_chat_messages():
             st.session_state.pending_action = None
             add_message("assistant", "Action cancelled.")
             st.rerun()
+        return  # Do not render chat messages if pending action is present
 
 def _render_user_input(openai_client):
     """Renders the user input bar."""
     st.markdown('<div class="sticky-input-bar">', unsafe_allow_html=True)
     input_container = st.container()
     with input_container:
-        input_disabled = st.session_state.pending_action is not None
+        # Check if input should be disabled
+        input_disabled = st.session_state.get("input_disabled", False) or st.session_state.pending_action is not None
         audio_bytes = None
         if not input_disabled:
             col1, col2 = st.columns([8, 1])
@@ -104,8 +109,14 @@ def _render_user_input(openai_client):
                 st.text_input("Your message...", key="prompt_input", on_change=process_text_input,
                               disabled=input_disabled, label_visibility="collapsed")
             with col2:
-                audio_bytes = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", 
-                                           key='mic', just_once=True, use_container_width=True)
+                # Use mic_recorder but with our custom styling
+                audio_bytes = mic_recorder(
+                    start_prompt="🎙️",  # Use the default mic emoji
+                    stop_prompt="⏹️",   # Use the default stop emoji
+                    key='mic',
+                    just_once=True,
+                    use_container_width=True,
+                )
         
         if audio_bytes:
             with st.spinner("Transcribing..."):
@@ -116,15 +127,28 @@ def _render_user_input(openai_client):
                     handle_user_input(transcript.text)
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Voice transcription failed: {e}", icon="🚨")
+                    # Use a more appropriate error display method
+                    st.markdown(f'<div class="error-message">🚨 Voice transcription failed: {str(e)}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
+def render_tool_result(tool_result, idx=None):
+    tool = tool_result.get("tool")
+    result = tool_result.get("result")
+    error = tool_result.get("error")
+    if error:
+        st.error(error)
+        return
+    renderer = TOOL_UI_RENDERERS.get(tool)
+    if renderer:
+        renderer(result, idx=idx)
+    else:
+        st.write(result)
 
 def show_main_chat_ui(db_manager, openai_client):
     """The main function to build the entire chat UI."""
     _render_sidebar(db_manager)
     
-    st.header("Commission Co-Pilot")
+    st.header("KangenX Commission Co-Pilot")
     
     if not st.session_state.messages:
         display_welcome_message()

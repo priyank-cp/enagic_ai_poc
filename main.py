@@ -1,21 +1,21 @@
 # main.py
 
+import streamlit as st
+st.set_page_config(page_title="Commission Co-Pilot", layout="wide", page_icon="🤖")
+
+from ui_components import inject_custom_css
+inject_custom_css()
+
 from dotenv import load_dotenv
 load_dotenv()
 
-import streamlit as st
 import os
 from openai import OpenAI
 
 from database import MongoManager, MemoryManager
-from ui_components import inject_custom_css
 from app.auth import show_login_ui
 from app.chat_ui import show_main_chat_ui
 from app.state import initialize_session_state
-
-# --- Page Configuration ---
-st.set_page_config(page_title="Commission Co-Pilot", layout="wide", page_icon="🤖")
-inject_custom_css()
 
 # --- Resource Initialization ---
 @st.cache_resource
@@ -47,7 +47,9 @@ openai_client, db_manager = init_resources()
 initialize_session_state()
 
 # --- Main Application Router ---
-if st.session_state.get("authenticated", False):
-    show_main_chat_ui(db_manager=db_manager, openai_client=openai_client)
-else:
-    show_login_ui()
+# if st.session_state.get("authenticated", False):
+#     show_main_chat_ui(db_manager=db_manager, openai_client=openai_client)
+# else:
+#     show_login_ui()
+
+show_main_chat_ui(db_manager=db_manager, openai_client=openai_client)
