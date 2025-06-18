@@ -30,15 +30,12 @@ AVAILABLE_TOOLS = {
         "func": recover_sap_commission,
         "required_params": ["order_id", "reason"],
         "description": "Recovers commission from SAP for a specific cancelled order ID and reason.",
-        "param_descriptions": {
-            "order_id": "The ID of the cancelled order",
-            "reason": "The reason for commission recovery"
-        }
+        "param_descriptions": {}
     },
     "reconcile_sap_vs_es_sales": {
         "func": reconcile_sap_vs_es_sales,
         "required_params": ["start_date", "end_date"],
-        "description": "Reconciles sales data between SAP and ES for a given date range.",
+        "description": "Reconcile SAP vs ES Commission For a specific date: Reconciles sales data between SAP and ES for a given date range.",
         "param_descriptions": {
             "start_date": "Start date in YYYY-MM-DD format or natural language (e.g., 'this month', 'last quarter')",
             "end_date": "End date in YYYY-MM-DD format or natural language"
@@ -54,26 +51,19 @@ AVAILABLE_TOOLS = {
         "func": process_sales_payment,
         "required_params": ["sales_date"],
         "description": "Processes sales payment for a specific sales date.",
-        "param_descriptions": {
-            "sales_date": "The sales date in YYYY-MM-DD format or natural language"
-        }
+        "param_descriptions": {}
     },
     "issue_payment": {
         "func": issue_payment,
         "required_params": ["amount", "vendor_id"],
         "description": "Issues a payment to a vendor for a specific amount.",
-        "param_descriptions": {
-            "amount": "The payment amount",
-            "vendor_id": "The ID of the vendor to pay"
-        }
+        "param_descriptions": {}
     },
     "update_es_payment_result": {
         "func": update_es_payment_result,
         "required_params": ["file_name"],
         "description": "Updates the payment result for a specific file.",
-        "param_descriptions": {
-            "file_name": "The name of the file containing payment results"
-        }
+        "param_descriptions": {}
     },
     "recover_canceled_orders": {
         "func": recover_canceled_orders,
@@ -109,10 +99,7 @@ AVAILABLE_TOOLS = {
         "func": get_general_commission_report,
         "required_params": ["start_date", "end_date"],
         "description": "Generates a general commission report for a given date range.",
-        "param_descriptions": {
-            "start_date": "Start date in YYYY-MM-DD format or natural language",
-            "end_date": "End date in YYYY-MM-DD format or natural language"
-        }
+        "param_descriptions": {}
     },
     "get_top_vendor_payments": {
         "func": get_top_vendor_payments,
@@ -139,9 +126,9 @@ def generate_tool_descriptions() -> str:
         if 'required_params' in tool:
             desc += "  Required parameters:\n"
             for param in tool['required_params']:
-                param_desc = f"    - {param}: {tool['param_descriptions'][param]}"
-                if param in ['start_date', 'end_date']:
-                    param_desc += " (Must be in YYYY-MM-DD format. Natural language dates like 'today', 'this month', etc. will be automatically converted)"
+                param_desc = f"    - {param}"
+                if param in tool.get('param_descriptions', {}):
+                    param_desc += f": {tool['param_descriptions'][param]}"
                 desc += param_desc + "\n"
         descriptions.append(desc)
     return "\n".join(descriptions)
@@ -170,9 +157,7 @@ Available tools:
 
 IMPORTANT: Always extract and normalize date ranges from user input.
 {date_prediction_prompt}
-
 {conversation_context}
-
 User input: {user_input}
 
 CRITICAL: Your response must be a raw JSON object without any markdown formatting or code block notation. DO NOT include ```json or any other markdown formatting.
@@ -248,9 +233,16 @@ def get_planned_action(user_input: str) -> dict:
     chain = prompt | llm
     try:
         # Do not remove formatted_prompt commented code
-        # formatted_prompt = prompt.format(tool_descriptions=tool_descriptions, user_input=user_input)
-        # print("============formatted_prompt===============")
-        # print(formatted_prompt)
+        formatted_prompt = prompt.format_messages(
+            tool_descriptions=tool_descriptions, 
+            user_input=user_input,
+            date_prediction_prompt=get_date_prediction_prompt(),
+            conversation_context=conversation_context
+        )
+        print("============formatted_prompt===============")
+        for msg in formatted_prompt:
+            print(f"{msg.type.upper()}: {msg.content}")
+
         response = chain.invoke({
             "tool_descriptions": tool_descriptions, 
             "user_input": user_input,
